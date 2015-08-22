@@ -52,11 +52,8 @@
         android:layout_height="match_parent"
         android:layout_below="@id/title_bar"
         android:layout_above="@id/adView"
-        android:paddingLeft="10dip"
-        android:paddingEnd="10dip"
-        android:paddingRight="10dip"
-        android:paddingStart="10dip"
-        android:divider="@null">
+        android:divider="@null"
+        android:background="@android:color/white">
     </ListView>
 
 

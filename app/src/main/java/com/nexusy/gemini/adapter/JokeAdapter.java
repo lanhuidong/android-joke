@@ -27,6 +27,11 @@ public class JokeAdapter extends BaseAdapter {
     }
 
     @Override
+    public boolean isEnabled(int position) {
+        return false;
+    }
+
+    @Override
     public int getCount() {
         return jokes.size();
     }
