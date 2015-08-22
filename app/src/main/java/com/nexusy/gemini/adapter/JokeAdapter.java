@@ -46,7 +46,7 @@ public class JokeAdapter extends BaseAdapter {
         ViewHolder holder;
         if (convertView == null) {
             holder = new ViewHolder();
-            convertView = mInflater.inflate(R.layout.joke, null);
+            convertView = mInflater.inflate(R.layout.joke, parent, false);
             holder.content = (TextView) convertView.findViewById(R.id.joke_content);
             convertView.setTag(holder);
         } else {

@@ -1,32 +1,26 @@
 package com.nexusy.gemini.http;
 
-import org.apache.http.HttpResponse;
-import org.apache.http.HttpVersion;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.conn.ClientConnectionManager;
-import org.apache.http.conn.params.ConnManagerParams;
-import org.apache.http.conn.scheme.PlainSocketFactory;
-import org.apache.http.conn.scheme.Scheme;
-import org.apache.http.conn.scheme.SchemeRegistry;
-import org.apache.http.conn.ssl.SSLSocketFactory;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
-import org.apache.http.message.BasicNameValuePair;
-import org.apache.http.params.BasicHttpParams;
-import org.apache.http.params.HttpConnectionParams;
-import org.apache.http.params.HttpParams;
-import org.apache.http.params.HttpProtocolParams;
-import org.apache.http.protocol.HTTP;
-
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.security.KeyManagementException;
 import java.security.KeyStore;
-import java.util.ArrayList;
-import java.util.List;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.Map;
+
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 /**
  * @author lanhuidong
@@ -34,56 +28,98 @@ import java.util.Map;
  */
 public class GeminiHttpClient {
 
-    private static HttpClient initHttpClient() {
-
-        KeyStore trustStore;
+    private static SSLSocketFactory initSocketFactory() {
         try {
-            trustStore = KeyStore.getInstance(KeyStore.getDefaultType());
-            trustStore.load(null, null);
-            SSLSocketFactory sf = new SSLSocketFactoryEx(trustStore);
-            sf.setHostnameVerifier(SSLSocketFactory.ALLOW_ALL_HOSTNAME_VERIFIER);
-            HttpParams params = new BasicHttpParams();
-            HttpProtocolParams.setVersion(params, HttpVersion.HTTP_1_1);
-            HttpProtocolParams.setContentCharset(params, HTTP.DEFAULT_CONTENT_CHARSET);
-            HttpProtocolParams.setUseExpectContinue(params, true);
-            ConnManagerParams.setTimeout(params, 10000);
-            HttpConnectionParams.setConnectionTimeout(params, 10000);
-            HttpConnectionParams.setSoTimeout(params, 10000);
-            SchemeRegistry schReg = new SchemeRegistry();
-            schReg.register(new Scheme("http", PlainSocketFactory.getSocketFactory(), 80));
-            schReg.register(new Scheme("https", sf, 443));
-            ClientConnectionManager conManager = new ThreadSafeClientConnManager(params, schReg);
-
-            return new DefaultHttpClient(conManager, params);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return new DefaultHttpClient();
-    }
-
-    private final static HttpClient httpclient = initHttpClient();
-
-    public static HttpResponse post(String url, Map<String, String> params) {
-
-        HttpPost httppost = new HttpPost(url);
-
-        try {
-            List<NameValuePair> nameValuePairs = new ArrayList<>(2);
-            for (String key : params.keySet()) {
-                if (key != null && key.trim().length() != 0) {
-                    nameValuePairs.add(new BasicNameValuePair(key, params.get(key)));
+            KeyStore keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
+            keyStore.load(null, null);
+            TrustManager[] trustAllCerts = new TrustManager[]{new X509TrustManager() {
+                public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                    return new java.security.cert.X509Certificate[]{};
                 }
-            }
-            httppost.addHeader("mobile-os", "api");
-            httppost.setEntity(new UrlEncodedFormEntity(nameValuePairs, "utf8"));
-            HttpResponse response = httpclient.execute(httppost);
-            return response;
-        } catch (ClientProtocolException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
+
+                public void checkClientTrusted(X509Certificate[] chain,
+                                               String authType) throws CertificateException {
+                }
+
+                public void checkServerTrusted(X509Certificate[] chain,
+                                               String authType) throws CertificateException {
+                }
+            }};
+            SSLContext context = SSLContext.getInstance("TLS");
+            context.init(null, trustAllCerts, null);
+            return context.getSocketFactory();
+        } catch (NoSuchAlgorithmException | KeyStoreException | KeyManagementException | CertificateException | IOException e) {
             e.printStackTrace();
         }
         return null;
     }
 
+    private final static SSLSocketFactory socketFactory = initSocketFactory();
+
+    public final static HostnameVerifier DO_NOT_VERIFY = new HostnameVerifier() {
+        public boolean verify(String hostname, SSLSession session) {
+            return true;
+        }
+    };
+
+    public static String post(URL url, Map<String, String> params) {
+        OutputStream os = null;
+        BufferedReader br = null;
+        String result = "";
+        try {
+            String data = "";
+            for (Map.Entry<String, String> entry : params.entrySet()) {
+                data = "&" + entry.getKey() + "=" + entry.getValue();
+            }
+            HttpsURLConnection connection = (HttpsURLConnection) url.openConnection();
+            connection.setSSLSocketFactory(socketFactory);
+            connection.setReadTimeout(10000);
+            connection.setConnectTimeout(10000);
+            connection.setUseCaches(false);
+            connection.setDoInput(true);
+            connection.setDoOutput(true);
+            connection.setRequestMethod("POST");
+            connection.setHostnameVerifier(DO_NOT_VERIFY);
+            connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+            connection.setRequestProperty("Content-Length", String.valueOf(data.getBytes("UTF-8").length));
+            os = connection.getOutputStream();
+            os.write(data.getBytes("UTF-8"));
+            os.flush();
+            if (connection.getResponseCode() == 200) {
+                br = new BufferedReader(new InputStreamReader(connection.getInputStream(), "UTF-8"));
+                String s;
+                while ((s = br.readLine()) != null) {
+                    result = result + s;
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (os != null) {
+                try {
+                    os.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            if (br != null) {
+                try {
+                    br.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return result;
+    }
+
+    public static String post(String url, Map<String, String> params) {
+        try {
+            URL tmp = new URL(url);
+            return post(tmp, params);
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        }
+        return "";
+    }
 }

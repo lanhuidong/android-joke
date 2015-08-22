@@ -17,8 +17,6 @@ import com.nexusy.gemini.http.GeminiHttpClient;
 import com.nexusy.gemini.http.UrlConstants;
 import com.nexusy.gemini.model.Joke;
 
-import org.apache.http.HttpResponse;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -37,9 +35,6 @@ public class MainActivity extends AppCompatActivity {
     private Dialog loadingDialog;
 
     private View footerView;
-    private TextView loadMore;
-
-    private Button refresh;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,10 +46,10 @@ public class MainActivity extends AppCompatActivity {
         mAdView.loadAd(adRequest);
 
         listView = (ListView) findViewById(R.id.joke_list);
-        footerView = getLayoutInflater().inflate(R.layout.list_footer, null);
+        footerView = getLayoutInflater().inflate(R.layout.list_footer, listView, false);
         listView.addFooterView(footerView);
 
-        loadMore = (TextView) findViewById(R.id.load_more);
+        TextView loadMore = (TextView) findViewById(R.id.load_more);
         loadMore.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -69,11 +64,11 @@ public class MainActivity extends AppCompatActivity {
 
         new QueryOlderJokesTask().execute();
 
-        refresh = (Button) findViewById(R.id.refresh);
+        Button refresh = (Button) findViewById(R.id.refresh);
         refresh.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if(maxId != null){
+                if (maxId != null) {
                     new QueryNewerJokesTask().execute(maxId.toString());
                 }
             }
@@ -99,7 +94,7 @@ public class MainActivity extends AppCompatActivity {
             if(params.length > 0){
                 parameters.put("id", params[0]);
             }
-            HttpResponse response = GeminiHttpClient.post(UrlConstants.QUERY_OLDER_JOKES, parameters);
+            String response = GeminiHttpClient.post(UrlConstants.QUERY_OLDER_JOKES, parameters);
             List<Joke> jokes = new DataParser().parseHttpResponse(response);
             if (jokes.isEmpty()) {
                 return Collections.emptyList();
@@ -140,7 +135,7 @@ public class MainActivity extends AppCompatActivity {
         protected List<Joke> doInBackground(String... params) {
             Map<String, String> parameters = new HashMap<>();
             parameters.put("id", params[0]);
-            HttpResponse response = GeminiHttpClient.post(UrlConstants.QUERY_OLDER_JOKES, parameters);
+            String response = GeminiHttpClient.post(UrlConstants.QUERY_OLDER_JOKES, parameters);
             List<Joke> jokes = new DataParser().parseHttpResponse(response);
             if (jokes.isEmpty()) {
                 return Collections.emptyList();

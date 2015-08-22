@@ -5,11 +5,6 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 import com.nexusy.gemini.model.Joke;
 
-import org.apache.http.HttpResponse;
-import org.apache.http.ParseException;
-import org.apache.http.util.EntityUtils;
-
-import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
@@ -19,21 +14,14 @@ import java.util.List;
  */
 public class DataParser {
 
-    public List<Joke> parseHttpResponse(HttpResponse response) {
-        if (response != null && response.getStatusLine().getStatusCode() == 200) {
-            try {
-                String jsonString = EntityUtils.toString(response.getEntity());
-                Gson gson = new GsonBuilder().setDateFormat("yyyy-MM-dd").create();
-                List<Joke> jokes = gson.fromJson(jsonString, new TypeToken<List<Joke>>() {
-                }.getType());
-                return jokes;
-            } catch (ParseException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+    public List<Joke> parseHttpResponse(String json) {
+        if (!"".equals(json)) {
+            Gson gson = new GsonBuilder().setDateFormat("yyyy-MM-dd").create();
+            return gson.fromJson(json, new TypeToken<List<Joke>>() {
+            }.getType());
+        } else {
+            return Collections.emptyList();
         }
-        return Collections.emptyList();
     }
 
 }
