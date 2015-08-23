@@ -135,7 +135,7 @@ public class MainActivity extends AppCompatActivity {
         protected List<Joke> doInBackground(String... params) {
             Map<String, String> parameters = new HashMap<>();
             parameters.put("id", params[0]);
-            String response = GeminiHttpClient.post(UrlConstants.QUERY_OLDER_JOKES, parameters);
+            String response = GeminiHttpClient.post(UrlConstants.QUERY_NEWER_JOKES, parameters);
             List<Joke> jokes = new DataParser().parseHttpResponse(response);
             if (jokes.isEmpty()) {
                 return Collections.emptyList();
